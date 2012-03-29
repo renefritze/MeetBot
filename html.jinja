@@ -1,0 +1,12 @@
+<html>
+<head>
+	<style type="text/css">
+		.user1 { color: purple; }
+	</style>
+</head>
+<body>
+			{% for msg in messages%}
+				{{ msg.html() }}
+			{% endfor %}
+</body>
+</html>
