@@ -5,49 +5,11 @@ from jinja2 import Environment, FileSystemLoader
 
 from tasbot.plugin import IPlugin
 from tasbot.decorators import AdminOnly, MinArgs, NotSelf
+from tasbot.colors import getColourPaletteCheat as getColourPalette
 
-class VoteFailed(Exception):
-	def __init__(self, question, user, score):
-		self.question = question
-		self.user = user
-		self.score = score
-		
-	def __str__(self):
-		return 'Your vote for %s with %s failed. Make sure you vote by saying "!vote [+,-] [1,0]'%(self.question,self.score)
-		
-class Message(object):
-	def __init__(self,u,m,i):
-		self.user = u
-		self.msg = m
-		self.i = i
-		#we need this marker to move the markup into the jinja template
-		self.type = 'message'
-	
-class Top(object):
-	def __init__(self,top,num):
-		self.top = top
-		self.num = num
-		self.type = 'top'
-			
-class Vote(object):
-	def __init__(self,question):
-		self.question = question
-		self.votes = {}
-		self.type = 'vote'
-		
-	def add_vote(self,user,score):
-		try:
-			def signum(x):
-				return (x > 0) - (x < 0)
-			score = int(score)
-			self.votes[user] = signum(score) 
-		except Exception, e:
-			self.logger.exception(e)
-			raise VoteFailed(self.question,user, score)
-			
-	def result(self):
-		return sum([score for user,score in self.votes.iteritems()])
-	
+from messages import (Vote, VoteFailed, Message, Top)
+
+
 class Main(IPlugin):
 	def __init__(self,name,tasc):
 		IPlugin.__init__(self,name,tasc)
@@ -90,8 +52,13 @@ class Main(IPlugin):
 		env = Environment(loader=FileSystemLoader('.'))
 		template = env.get_template('html.jinja')
 		html_fn = fn + '.html'
+		colors = getColourPalette(len(self.tasclient.channels[self._channel].users) + 1, 
+								[(0.0,0,0.0),(1.0,1.0,1.0)])
+		colors = [(int(r*256),int(g*256),int(b*256)) for (r,g,b) in colors]
+		attending = self._everyone_but(self.tasclient.users[self.nick])
 		with open(html_fn, 'wb') as outfile:
-			outfile.write( template.render(messages=self._msg,tops=self._tops,date=self._begin) )
+			outfile.write( template.render(messages=self._msg,tops=self._tops,date=self._begin, 
+										colors=colors, attending=attending) )
 		url = '%s/%s'%(self._urlbase,html_fn) 
 		self.say(url)
 		self._msg = []
@@ -138,6 +105,18 @@ class Main(IPlugin):
 		"""end current voting and output result"""
 		self._msg.append(self._current_vote)
 		self.say('%s: %d'%(self._current_vote.question,self._current_vote.result()))
+		
+	def _everyone_but(self, user):
+		chan = self.tasclient.channels[self._channel]
+		users = [self.nick,'ChanServ', user]
+		return [s.username for s in chan.users if s.username not in users ]
+	
+	@NotSelf
+	def cmd_said_ring(self,args,cmd):
+		user = args[1]
+		self.say('Ring ' + ', '.join( self._everyone_but(user) ) )
+		for nick in self._everyone_but(user):
+			self.tasclient.send_raw('RING %s'%nick)
 					
 	def say(self,msg):
 		self.tasclient.say(self._channel, msg)

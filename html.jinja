@@ -1,7 +1,9 @@
 <html>
 <head>
 	<style type="text/css">
-		.user1 { color: purple; }
+	{% for color in colors %}
+		.user{{loop.index}} { color: rgb{{color}}; }
+	{% endfor %}
 	</style>
 </head>
 <body>
@@ -14,6 +16,12 @@
 	</li>
 	{% endfor %}
 </ol>
+<h2>Attending</h2>
+<ul>
+	{% for user in attending %}
+		<li>{{user}}</li>
+	{% endfor %}
+</ul>
 			{% for msg in messages%}
 				{% if msg.type == 'message' %}
 					<span class="msg"><span class="user{{msg.i}}">{{msg.user}}</span>: {{msg.msg}}</span> <br/>
