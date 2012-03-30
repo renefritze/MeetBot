@@ -17,49 +17,36 @@ class VoteFailed(Exception):
 		
 class Message(object):
 	def __init__(self,u,m,i):
-		self._user = u
-		self._msg = m
-		self._i = i
-
-	def txt(self):
-		return '%s: %s'%(self._user, self._msg)		
-	
-	def html(self):
-		return '<span class="msg"><span class="user%d">%s</span>: %s</span>'%(self._i, self._user, self._msg)
+		self.user = u
+		self.msg = m
+		self.i = i
+		#we need this marker to move the markup into the jinja template
+		self.type = 'message'
 	
 class Top(object):
 	def __init__(self,top,num):
 		self.top = top
-		self._num = num
-		
-	def html(self):
-		return '<a name="top_%d"><h2>%s</h2></a>'%(self._num,self.top)
-	
-	def txt(self):
-		return '----------------- %s --------------------'%self.top
-	
+		self.num = num
+		self.type = 'top'
+			
 class Vote(object):
 	def __init__(self,question):
-		self._question = question
-		self._votes = {}
+		self.question = question
+		self.votes = {}
+		self.type = 'vote'
 		
 	def add_vote(self,user,score):
 		try:
 			def signum(x):
 				return (x > 0) - (x < 0)
 			score = int(score)
-			self._votes[user] = signum(score) 
+			self.votes[user] = signum(score) 
 		except Exception, e:
 			self.logger.exception(e)
-			raise VoteFailed(self._question,user, score)
+			raise VoteFailed(self.question,user, score)
 			
 	def result(self):
-		return sum([score for user,score in self._votes.iteritems()])
-	
-	def html(self):
-		return '<span class="vote">%s - Result <span class="result">%d</span></span>'%(self._question,self.result())
-	def txt(self):
-		return '%s - Result %d\n'%(self._question,self.result())
+		return sum([score for user,score in self.votes.iteritems()])
 	
 class Main(IPlugin):
 	def __init__(self,name,tasc):
@@ -150,7 +137,7 @@ class Main(IPlugin):
 	def cmd_said_endvote(self,args,cmd):
 		"""end current voting and output result"""
 		self._msg.append(self._current_vote)
-		self.say(self._current_vote.txt())
+		self.say('%s: %d'%(self._current_vote.question,self._current_vote.result()))
 					
 	def say(self,msg):
 		self.tasclient.say(self._channel, msg)
