@@ -5,8 +5,17 @@
 	</style>
 </head>
 <body>
+<h1>Lobby Dev Meeting {{ date }}</h1>
+<h2>Agenda</h2>
+<ol class="tops">
+	{% for top in tops %}
+	<li>
+		<a href="#top_{{loop.index}}">{{top.top}}</a>
+	</li>
+	{% endfor %}
+</ol>
 			{% for msg in messages%}
-				{{ msg.html() }}
+				{{ msg.html() }}<br/>
 			{% endfor %}
 </body>
 </html>

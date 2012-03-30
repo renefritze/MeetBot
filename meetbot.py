@@ -7,9 +7,13 @@ from tasbot.plugin import IPlugin
 from tasbot.decorators import AdminOnly, MinArgs
 
 class VoteFailed(Exception):
-	def __init__(self, user, score):
+	def __init__(self, question, user, score):
+		self.question = question
 		self.user = user
 		self.score = score
+		
+	def __str__(self):
+		return 'Your vote for %s with %s failed. Make sure you vote by saying "!vote [+,-] [1,0]'%(self.question,self.score)
 		
 class Message(object):
 	def __init__(self,u,m,i):
@@ -18,9 +22,10 @@ class Message(object):
 		self._i = i
 
 	def txt(self):
-		return '%s: \n'%(self._user, self._msg)		
+		return '%s: %s'%(self._user, self._msg)		
+	
 	def html(self):
-		return '<span class="msg"><span class="user%d">%s</span>%s</span>'%(self._i, self._user, self._msg)
+		return '<span class="msg"><span class="user%d">%s</span>: %s</span>'%(self._i, self._user, self._msg)
 	
 class Top(object):
 	def __init__(self,top,num):
@@ -36,16 +41,20 @@ class Top(object):
 class Vote(object):
 	def __init__(self,question):
 		self._question = question
-		self._votes = []
+		self._votes = {}
 		
 	def add_vote(self,user,score):
 		try:
-			self._votes.append((user,int(score)))
-		except:
-			raise VoteFailed(user, score)
+			def signum(x):
+				return (x > 0) - (x < 0)
+			score = int(score)
+			self._votes[user] = signum(score) 
+		except Exception, e:
+			self.logger.exception(e)
+			raise VoteFailed(self._question,user, score)
 			
 	def result(self):
-		return sum([x[1] for x in self._votes])
+		return sum([score for user,score in self._votes.iteritems()])
 	
 	def html(self):
 		return '<span class="vote">%s - Result <span class="result">%d</span></span>'%(self._question,self.result())
@@ -65,6 +74,7 @@ class Main(IPlugin):
 		self._urlbase = tasc.main.config.get('meetbot', "urlbase")
 		self._channel = tasc.main.config.get('meetbot', "channel")
 		self._tops = []
+		self.nick = tasc.main.config.get('tasbot', "nick")
 
 	@AdminOnly
 	@MinArgs(2)
@@ -74,8 +84,9 @@ class Main(IPlugin):
 		self._channel = args[1]
 		self.tasclient.join(self._channel)
 		
+	@MinArgs(3)
 	def cmd_said_top(self,args,cmd):
-		top = Top(' '.join(args[2:]))
+		top = Top(' '.join(args[3:]),len(self._tops) + 1)
 		self._tops.append(top)
 		self._msg.append(top)
 
@@ -95,17 +106,37 @@ class Main(IPlugin):
 		self._votes = []
 		self._tops = []
 		
+	@MinArgs(2)
 	def cmd_said(self,args,cmd):
 		if self._in_session:
 			user = args[1]
-			message = ' '.join(args[2:])
-			self._msg.append(Message(user, message, 1))
+			if user != self.nick:
+				message = ' '.join(args[2:])
+				self._msg.append(Message(user, message, 1))
 			
 	def cmd_said_meetingbegin(self,args,cmd):
 		self._begin = datetime.datetime.now()
 		self._in_session = True
 		self._msg = []
-			
+		
+	@MinArgs(3)
+	def cmd_said_startvote(self,args,cmd):
+		vote = Vote(' '.join(args[3:]))
+		self._current_vote = vote
+
+	@MinArgs(2)
+	def cmd_said_vote(self,args,cmd):
+		user = args[1]
+		score = args[3]
+		try:
+			self._current_vote.add_vote(user, score)
+		except VoteFailed, fail:
+			self.tasclient.saypm(user, str(fail))
+		
+	def cmd_said_endvote(self,args,cmd):
+		self._msg.append(self._current_vote)
+		self.say(self._current_vote.txt())
+					
 	def say(self,msg):
 		self.tasclient.say(self._channel, msg)
 
