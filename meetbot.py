@@ -79,6 +79,7 @@ class Main(IPlugin):
 	@AdminOnly
 	@MinArgs(2)
 	def cmd_saidprivate_goto(self,args,cmd):
+		"""pm "!goto CHANNEL" to switch the bot to another channel"""
 		self.say('bye')
 		self.tasclient.leave(self._channel)
 		self._channel = args[1]
@@ -87,12 +88,14 @@ class Main(IPlugin):
 	@NotSelf		
 	@MinArgs(4)
 	def cmd_said_top(self,args,cmd):
+		"""start a new section in minutes with "!top title can have whitespace" """
 		top = Top(' '.join(args[3:]),len(self._tops) + 1)
 		self._tops.append(top)
 		self._msg.append(top)
 
 	@NotSelf
 	def cmd_said_meetingend(self,args,cmd):
+		"""write minutes to file and output url to it"""
 		self._in_session = False
 		self.say('meeting record ends')
 		dt = str(self._begin).replace(' ', '_')
@@ -111,6 +114,7 @@ class Main(IPlugin):
 	@NotSelf
 	@MinArgs(3)
 	def cmd_said(self,args,cmd):
+		"""in an active session all SAID response not from myself are recorded"""
 		if self._in_session:
 			user = args[1]
 			if user != self.nick:
@@ -119,6 +123,7 @@ class Main(IPlugin):
 			
 	@NotSelf
 	def cmd_said_meetingbegin(self,args,cmd):
+		"""start a meeting session"""
 		self._begin = datetime.datetime.now()
 		self._in_session = True
 		self._msg = []
@@ -126,12 +131,14 @@ class Main(IPlugin):
 	@NotSelf
 	@MinArgs(4)
 	def cmd_said_startvote(self,args,cmd):
+		"""start a +- 1|0 vote with "!startvote QUESTION_TITLE" """
 		vote = Vote(' '.join(args[3:]))
 		self._current_vote = vote
 
 	@NotSelf
 	@MinArgs(4)
 	def cmd_said_vote(self,args,cmd):
+		"""give your vote to current question with "!vote +1","!vote 0" or "!vote -1" """ 
 		user = args[1]
 		score = args[3]
 		try:
@@ -141,6 +148,7 @@ class Main(IPlugin):
 		
 	@NotSelf
 	def cmd_said_endvote(self,args,cmd):
+		"""end current voting and output result"""
 		self._msg.append(self._current_vote)
 		self.say(self._current_vote.txt())
 					
