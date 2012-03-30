@@ -4,7 +4,7 @@ import os
 from jinja2 import Environment, FileSystemLoader
 
 from tasbot.plugin import IPlugin
-from tasbot.decorators import AdminOnly, MinArgs
+from tasbot.decorators import AdminOnly, MinArgs, NotSelf
 
 class VoteFailed(Exception):
 	def __init__(self, question, user, score):
@@ -83,13 +83,15 @@ class Main(IPlugin):
 		self.tasclient.leave(self._channel)
 		self._channel = args[1]
 		self.tasclient.join(self._channel)
-		
+
+	@NotSelf		
 	@MinArgs(3)
 	def cmd_said_top(self,args,cmd):
 		top = Top(' '.join(args[3:]),len(self._tops) + 1)
 		self._tops.append(top)
 		self._msg.append(top)
 
+	@NotSelf
 	def cmd_said_meetingend(self,args,cmd):
 		self._in_session = False
 		self.say('meeting record ends')
@@ -106,6 +108,7 @@ class Main(IPlugin):
 		self._votes = []
 		self._tops = []
 		
+	@NotSelf
 	@MinArgs(2)
 	def cmd_said(self,args,cmd):
 		if self._in_session:
@@ -114,16 +117,19 @@ class Main(IPlugin):
 				message = ' '.join(args[2:])
 				self._msg.append(Message(user, message, 1))
 			
+	@NotSelf
 	def cmd_said_meetingbegin(self,args,cmd):
 		self._begin = datetime.datetime.now()
 		self._in_session = True
 		self._msg = []
 		
+	@NotSelf
 	@MinArgs(3)
 	def cmd_said_startvote(self,args,cmd):
 		vote = Vote(' '.join(args[3:]))
 		self._current_vote = vote
 
+	@NotSelf
 	@MinArgs(2)
 	def cmd_said_vote(self,args,cmd):
 		user = args[1]
@@ -133,6 +139,7 @@ class Main(IPlugin):
 		except VoteFailed, fail:
 			self.tasclient.saypm(user, str(fail))
 		
+	@NotSelf
 	def cmd_said_endvote(self,args,cmd):
 		self._msg.append(self._current_vote)
 		self.say(self._current_vote.txt())
