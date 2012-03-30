@@ -85,7 +85,7 @@ class Main(IPlugin):
 		self.tasclient.join(self._channel)
 
 	@NotSelf		
-	@MinArgs(3)
+	@MinArgs(4)
 	def cmd_said_top(self,args,cmd):
 		top = Top(' '.join(args[3:]),len(self._tops) + 1)
 		self._tops.append(top)
@@ -109,7 +109,7 @@ class Main(IPlugin):
 		self._tops = []
 		
 	@NotSelf
-	@MinArgs(2)
+	@MinArgs(3)
 	def cmd_said(self,args,cmd):
 		if self._in_session:
 			user = args[1]
@@ -124,13 +124,13 @@ class Main(IPlugin):
 		self._msg = []
 		
 	@NotSelf
-	@MinArgs(3)
+	@MinArgs(4)
 	def cmd_said_startvote(self,args,cmd):
 		vote = Vote(' '.join(args[3:]))
 		self._current_vote = vote
 
 	@NotSelf
-	@MinArgs(2)
+	@MinArgs(4)
 	def cmd_said_vote(self,args,cmd):
 		user = args[1]
 		score = args[3]
