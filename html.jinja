@@ -26,9 +26,9 @@
 				{% if msg.type == 'message' %}
 					<span class="msg"><span class="user{{msg.i}}">{{msg.user}}</span>: {{msg.msg}}</span> <br/>
 				{% elif msg.type == 'top' %}
-					<a name="top_{{msg.num}}"><h2>{{msg.top}}</h2></a>
+					<a name="top_{{msg.num}}"><h2>Agenda Item {{msg.num}}:{{msg.top}}</h2></a>
 				{% elif msg.type == 'vote' %}
-					<p class="vote">{{msg.question}}: Result <span class="result">{{msg.result()}}</span><br/>
+					<p class="vote"><h4>Vote: {{msg.question}}</h4>Result <span class="result">{{msg.result()}}</span><br/>
 						<ul>
 						{% for user,score in msg.votes.iteritems() %}
 						<li>{{user}}: {{score}}</li>
