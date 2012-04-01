@@ -1,0 +1,20 @@
+[size=180]Lobby Dev Meeting {{ date }}[/size]
+
+[size=130]Agenda[/size]
+[list=1]{% for top in tops %}[*]{{top.top}}{% endfor %}[/list]
+
+[size=130]Attending[/size]
+[list]{% for user in attending %}[*]{{user}}{% endfor %}[/list]
+
+[size=130]Log[/size]
+{% for msg in messages %}
+	{%- if msg.type == 'message' %}
+		[b][color={{colors[msg.i].hex()}}]{{msg.user}}[/color][/b]: {{msg.msg}}
+	{%- elif msg.type == 'top' %}
+		[size=100]Agenda Item {{msg.num}}:{{msg.top}} -------------------------[/size]
+	{%- elif msg.type == 'vote' %}
+		[size=100]Vote: {{msg.question}}[/size]
+		Result {{msg.result()}}
+			[list]{% for user,score in msg.votes.iteritems() %}[*]{{user}}: {{score}}{% endfor %}[/list]
+	{%- endif -%}
+{% endfor %}

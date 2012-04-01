@@ -2,7 +2,7 @@
 <head>
 	<style type="text/css">
 	{% for color in colors %}
-		.user{{loop.index}} { color: rgb{{color}}; }
+		.user{{loop.index}} { color: rgb{{color.rgb255()}}; }
 	{% endfor %}
 	</style>
 </head>
@@ -22,6 +22,7 @@
 		<li>{{user}}</li>
 	{% endfor %}
 </ul>
+<h2>Log</h2>
 			{% for msg in messages%}
 				{% if msg.type == 'message' %}
 					<span class="msg"><span class="user{{msg.i}}">{{msg.user}}</span>: {{msg.msg}}</span> <br/>

@@ -2,6 +2,8 @@
 import datetime
 import os
 from jinja2 import Environment, FileSystemLoader
+import cPickle as pickle
+import fnmatch
 
 from tasbot.plugin import IPlugin
 from tasbot.decorators import AdminOnly, MinArgs, NotSelf
@@ -9,6 +11,12 @@ from tasbot.colors import getColourPaletteCheat as getColourPalette
 
 from messages import (Vote, VoteFailed, Message, Top)
 
+class Meeting(object):
+	def __init__(self,msg_list,attending,begin,tops):
+		self.msg_list = msg_list 
+		self.attending = attending 
+		self.begin = begin 
+		self.tops = tops 
 
 class Main(IPlugin):
 	def __init__(self,name,tasc):
@@ -36,34 +44,11 @@ class Main(IPlugin):
 
 	@NotSelf		
 	@MinArgs(4)
-	def cmd_said_top(self,args,cmd):
-		"""start a new section in minutes with "!top title can have whitespace" """
+	def cmd_said_item(self,args,cmd):
+		"""start a new item in minutes with "!item title can have whitespace" """
 		top = Top(' '.join(args[3:]),len(self._tops) + 1)
 		self._tops.append(top)
 		self._msg.append(top)
-
-	@NotSelf
-	def cmd_said_meetingend(self,args,cmd):
-		"""write minutes to file and output url to it"""
-		self._in_session = False
-		self.say('meeting record ends')
-		dt = str(self._begin).replace(' ', '_')
-		fn = os.path.join(self._logdir, dt)
-		env = Environment(loader=FileSystemLoader('.'))
-		template = env.get_template('html.jinja')
-		html_fn = fn + '.html'
-		colors = getColourPalette(len(self.tasclient.channels[self._channel].users) + 1, 
-								[(0.0,0,0.0),(1.0,1.0,1.0)])
-		colors = [(int(r*256),int(g*256),int(b*256)) for (r,g,b) in colors]
-		attending = self._everyone_but(self.tasclient.users[self.nick])
-		with open(html_fn, 'wb') as outfile:
-			outfile.write( template.render(messages=self._msg,tops=self._tops,date=self._begin, 
-										colors=colors, attending=attending) )
-		url = '%s/%s'%(self._urlbase,html_fn) 
-		self.say(url)
-		self._msg = []
-		self._votes = []
-		self._tops = []
 		
 	@NotSelf
 	@MinArgs(3)
@@ -121,4 +106,49 @@ class Main(IPlugin):
 	def say(self,msg):
 		self.tasclient.say(self._channel, msg)
 
-		
+	@NotSelf
+	def cmd_said_meetingend(self,args,cmd):
+		"""write minutes to file and output url to it"""
+		self._in_session = False
+		self.say('meeting record ends')
+		attending = self._everyone_but(self.tasclient.users[self.nick])
+		meet = Meeting(self._msg,attending,self._begin,self._tops)
+		urls = self._output(meet) 
+		pickle.dump(meet, open('meeting_%s.pickle'%self._begin, 'wb'))
+		self.say('%s\n%s' % urls)
+		self._msg = []
+		self._votes = []
+		self._tops = []
+
+	def _output(self,meeting):
+		dt = str(meeting.begin).replace(' ', '_')
+		fn = os.path.join(self._logdir, dt)
+		env = Environment(loader=FileSystemLoader('.'))
+		template = env.get_template('html.jinja')
+		html_fn = fn + '.html'
+		bbcode_fn = fn + '.bbcode.txt'
+		colors = getColourPalette(len(meeting.attending) + 1, 
+								[(0.0,0,0.0),(1.0,1.0,1.0)])
+		with open(html_fn, 'wb') as outfile:
+			outfile.write( template.render(messages=meeting.msg_list, tops=meeting.tops, 
+					date=meeting.begin, colors=colors, attending=meeting.attending) )
+		template = env.get_template('bbcode.jinja')
+		with open(bbcode_fn, 'wb') as outfile:
+			outfile.write( template.render(messages=meeting.msg_list, tops=meeting.tops, 
+					date=meeting.begin, colors=colors, attending=meeting.attending) )
+		return ('%s/%s'%(self._urlbase,html_fn),'%s/%s'%(self._urlbase,bbcode_fn))
+
+	@AdminOnly
+	def cmd_said_redo(self, args, cmd):
+		"""reload all pickled meetings and output them again"""
+		cdir = '.'
+		for fn in fnmatch.filter(os.listdir(cdir), 'meeting_*.pickle'):
+			try:
+				meet = pickle.load(open(fn,'rb'))
+				urls = self._output(meet) 
+				self.say('%s\n%s' % urls)
+			except Exception,e:
+				msg = 'Failed to pickle %s' % fn
+				self.logger.error(msg)
+				self.say(msg)
+				self.logger.exception(e)
