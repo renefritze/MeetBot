@@ -8,6 +8,7 @@ import fnmatch
 from tasbot.plugin import IPlugin
 from tasbot.decorators import AdminOnly, MinArgs, NotSelf
 from tasbot.colors import getColourPaletteCheat as getColourPalette
+from tasbot.colors import Color
 
 from messages import (Vote, VoteFailed, Message, Top)
 
@@ -23,6 +24,7 @@ class Main(IPlugin):
 		IPlugin.__init__(self,name,tasc)
 		self._msg = []
 		self._in_session = False
+		self._attending = set()
 		self._logdir = tasc.main.config.get('meetbot', "logdir")
 		try:
 			os.mkdir(self._logdir)
@@ -56,9 +58,10 @@ class Main(IPlugin):
 		"""in an active session all SAID response not from myself are recorded"""
 		if self._in_session:
 			user = args[1]
+			self._attending.add(user)
 			if user != self.nick:
 				message = ' '.join(args[2:])
-				self._msg.append(Message(user, message, 1))
+				self._msg.append(Message(user, message, self._user_id(user)))
 			
 	@NotSelf
 	def cmd_said_meetingbegin(self,args,cmd):
@@ -93,8 +96,15 @@ class Main(IPlugin):
 		
 	def _everyone_but(self, user):
 		chan = self.tasclient.channels[self._channel]
-		users = [self.nick,'ChanServ', user]
+		users = [self.nick,'ChanServ','Nightwatch', user]
 		return [s.username for s in chan.users if s.username not in users ]
+	
+	def _user_id(self, user):
+		chan = self.tasclient.channels[self._channel]
+		try:
+			return [s.username for s in chan.users].index(user)
+		except:
+			return 0
 	
 	@NotSelf
 	def cmd_said_ring(self,args,cmd):
@@ -111,7 +121,7 @@ class Main(IPlugin):
 		"""write minutes to file and output url to it"""
 		self._in_session = False
 		self.say('meeting record ends')
-		attending = self._everyone_but(self.tasclient.users[self.nick])
+		attending = [s for s in self._attending if s not in ('MeetBot','ChanServ','Nightwatch')]
 		meet = Meeting(self._msg,attending,self._begin,self._tops)
 		urls = self._output(meet) 
 		pickle.dump(meet, open('meeting_%s.pickle'%self._begin, 'wb'))
@@ -127,8 +137,8 @@ class Main(IPlugin):
 		template = env.get_template('html.jinja')
 		html_fn = fn + '.html'
 		bbcode_fn = fn + '.bbcode.txt'
-		colors = getColourPalette(len(meeting.attending) + 1, 
-								[(0.0,0,0.0),(1.0,1.0,1.0)])
+		exclude = [Color((0,0,0)), Color((1,1,1)), Color((0.0,0.0,0.0)), Color((1.0,1.0,1.0))]
+		colors = getColourPalette(len(meeting.attending) + 1, exclude)
 		with open(html_fn, 'wb') as outfile:
 			outfile.write( template.render(messages=meeting.msg_list, tops=meeting.tops, 
 					date=meeting.begin, colors=colors, attending=meeting.attending) )

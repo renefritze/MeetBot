@@ -19,13 +19,17 @@
 <h2>Attending</h2>
 <ul>
 	{% for user in attending %}
-		<li>{{user}}</li>
+		<li><span class="user{{attending.index(user)}}">{{user}}</span></li>
 	{% endfor %}
 </ul>
 <h2>Log</h2>
 			{% for msg in messages%}
 				{% if msg.type == 'message' %}
-					<span class="msg"><span class="user{{msg.i}}">{{msg.user}}</span>: {{msg.msg}}</span> <br/>
+					{% if msg.user in attending %}
+						<span class="msg"><span class="user{{attending.index(msg.user)}}">{{msg.user}}</span>: {{msg.msg}}</span> <br/>
+					{% else %}
+						<span class="msg"><span class="bot">{{msg.user}}</span>: {{msg.msg}}</span> <br/>
+					{% endif %}
 				{% elif msg.type == 'top' %}
 					<a name="top_{{msg.num}}"><h2>Agenda Item {{msg.num}}:{{msg.top}}</h2></a>
 				{% elif msg.type == 'vote' %}
